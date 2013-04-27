@@ -1,21 +1,26 @@
 /*
  * doubly_lexical_ordering.cpp
  *
- *  Created on: Apr 27, 2013
+ *  Created on: Apr 26, 2013
  *      Author: Abhiram R & Akhilesh Godi
  */
 
 #include <iostream>
 #include <cstdlib>
 #include <sys/time.h>
-//#include <cilk/cilk.h>
+#include <cilk/cilk.h>
+
 //#define DEBUG
+//#define PRINT
+
+//#define CILK
+
 using namespace std;
 
 int* partition_column_sum_vector ( bool** M, int m, int n )
 {
     int* d = new int [m];
-    for ( int j = 0; j < m; j++ ) //I smell cilk_for
+    cilk_for ( int j = 0; j < m; j++ ) //I smell cilk_for
     {
         d [j] = 0;
         for ( int i = 0; i < n; i++ )
@@ -27,7 +32,7 @@ int* partition_column_sum_vector ( bool** M, int m, int n )
 }
 void exchange_cols ( bool** A, int r, int c, int p, int q )
 {
-    for ( int i = 0; i < r; i++ ) // I smell cilk_for
+    cilk_for ( int i = 0; i < r; i++ ) // I smell cilk_for
     {
         A [i] [p] = A [i] [p] xor A [i] [q];
         A [i] [q] = A [i] [p] xor A [i] [q];
@@ -36,7 +41,7 @@ void exchange_cols ( bool** A, int r, int c, int p, int q )
 }
 void exchange_rows ( bool** A, int r, int c, int p, int q )
 {
-    for ( int i = 0; i < c; i++ ) // I smell cilk_for
+    cilk_for ( int i = 0; i < c; i++ ) // I smell cilk_for
     {
         A [p] [i] = A [p] [i] xor A [q] [i];
         A [q] [i] = A [p] [i] xor A [q] [i];
@@ -82,9 +87,9 @@ result vector_max ( int* d, int m )
         r.max = d [0];
         return r;
     }
-    result r1 = vector_max ( d, m / 2 );
+    result r1 = cilk_spawn vector_max ( d, m / 2 );
     result r2 = vector_max ( d + m / 2, m / 2 ); // i smell cilk_spawn
-
+    cilk_sync;
     result r;
     if ( r1.max > r2.max )
     {
@@ -100,11 +105,6 @@ result vector_max ( int* d, int m )
     return r;
 }
 
-void doubly_lexical_ordering ( bool** A, int m, int n )
-{
-
-}
-
 void print_matrix ( bool** A, int m, int n )
 {
     for ( int i = 0; i < m; i++ )
@@ -115,16 +115,15 @@ void print_matrix ( bool** A, int m, int n )
     }
 
 }
-int size = 2048;
+int size = 2;
 int main ( int argc, char** argv )
 {
-    int n = size;
-    int m = size;
-    struct timeval start_time;
-    struct timeval end_time;
-
-    while ( n <= size )
+    while ( size <= 2048 )
     {
+        int n = size;
+        int m = size;
+        struct timeval start_time;
+        struct timeval end_time;
 
         bool** A = new bool* [n];
         for ( int i = 0; i < n; i++ )
@@ -138,7 +137,9 @@ int main ( int argc, char** argv )
             {
                 A [i] [j] = random () % 2;
             }
-        //print_matrix ( A, n, m );
+#ifdef PRINT
+        print_matrix ( A, n, m );
+#endif
         gettimeofday ( &start_time, NULL );
         int c = m;
         while ( m > 1 )
@@ -170,18 +171,18 @@ int main ( int argc, char** argv )
             m--;
         }
         gettimeofday ( &end_time, NULL );
-        cout << "Time taken for (" << n << "," << m << ") = "
+        cout << "Time taken for (" << n << "," << c << ") = "
                 << end_time.tv_sec + end_time.tv_usec / (1000000.0) - start_time.tv_sec - start_time.tv_usec / (1000000.0) << endl;
-        //cout << "Final Totally Reverse Lexicographic Matrix : " << endl;
-       // print_matrix ( A, n, c );
+#ifdef PRINT
+        cout << "Final Totally Reverse Lexicographic Matrix : " << endl;
+        print_matrix ( A, n, c );
+#endif
         for ( int i = 0; i < n; i++ )
         {
             delete A [i];
         }
         delete A;
-
-        n += 1;
-        m += 1;
+        size *= 2;
     }
 }
 
