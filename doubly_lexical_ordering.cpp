@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <sys/time.h>
 //#include <cilk/cilk.h>
-
+//#define DEBUG
 using namespace std;
 
 int* partition_column_sum_vector ( bool** M, int m, int n )
@@ -47,7 +47,7 @@ void exchange_rows ( bool** A, int r, int c, int p, int q )
 void re_order ( bool** A, int r, int c )
 {
     int i = 0, j = 0;
-    while ( A [i] [c - 1] == 0 )
+    while ( i < r && A [i] [c - 1] == 0 )
         i++;
     //-- i definitely points to a 1 now
     while ( j < r && i < r )
@@ -65,6 +65,7 @@ void re_order ( bool** A, int r, int c )
             j++;
         }
     }
+    //cout << i << endl;
 }
 
 struct result
@@ -114,7 +115,7 @@ void print_matrix ( bool** A, int m, int n )
     }
 
 }
-int size = 8;
+int size = 2048;
 int main ( int argc, char** argv )
 {
     int n = size;
@@ -131,35 +132,48 @@ int main ( int argc, char** argv )
             A [i] = new bool [m];
 
         }
-
+        //srand ( 4 );
         for ( int i = 0; i < n; i++ )
             for ( int j = 0; j < m; j++ )
             {
                 A [i] [j] = random () % 2;
             }
-        print_matrix ( A, n, m );
+        //print_matrix ( A, n, m );
         gettimeofday ( &start_time, NULL );
-        cout << "Output : \n ";
-        int* d = partition_column_sum_vector ( A, n, m );
-        for ( int i = 0; i < m; i++ )
+        int c = m;
+        while ( m > 1 )
         {
-            cout << d [i] << " ";
+
+            int* d = partition_column_sum_vector ( A, n, m );
+#ifdef DEBUG
+            cout << "Column vector  :  ";
+            for ( int i = 0; i < m; i++ )
+            {
+                cout << d [i] << " ";
+            }
+            cout << endl;
+#endif
+
+            int jwithmax = vector_max ( d, m ).index;
+#ifdef DEBUG
+            cout << jwithmax << " " << vector_max ( d, n ).max << endl;
+#endif
+            exchange_cols ( A, n, m, jwithmax, m - 1 );
+#ifdef DEBUG
+            print_matrix ( A, n, m );
+#endif
+            re_order ( A, n, m );
+#ifdef DEBUG
+            cout << "Reordered matrix = " << endl;
+            print_matrix ( A, n, m );
+#endif
+            m--;
         }
-        cout << endl;
-
-        int jwithmax = vector_max ( d, n ).index;
-        cout << jwithmax << " " << vector_max ( d, n ).max << endl;
-
-        exchange_cols ( A, n, m, jwithmax, m - 1 );
-        print_matrix ( A, n, m );
-        re_order ( A, n, m );
-        cout << "Reordered matrix = " << endl;
-        print_matrix ( A, n, m );
-
         gettimeofday ( &end_time, NULL );
-
         cout << "Time taken for (" << n << "," << m << ") = "
                 << end_time.tv_sec + end_time.tv_usec / (1000000.0) - start_time.tv_sec - start_time.tv_usec / (1000000.0) << endl;
+        //cout << "Final Totally Reverse Lexicographic Matrix : " << endl;
+       // print_matrix ( A, n, c );
         for ( int i = 0; i < n; i++ )
         {
             delete A [i];
