@@ -25,6 +25,48 @@ int* partition_column_sum_vector ( bool** M, int m, int n )
     }
     return d;
 }
+void exchange_cols ( bool** A, int r, int c, int p, int q )
+{
+    for ( int i = 0; i < r; i++ ) // I smell cilk_for
+    {
+        A [i] [p] = A [i] [p] xor A [i] [q];
+        A [i] [q] = A [i] [p] xor A [i] [q];
+        A [i] [p] = A [i] [p] xor A [i] [q];
+    }
+}
+void exchange_rows ( bool** A, int r, int c, int p, int q )
+{
+    for ( int i = 0; i < c; i++ ) // I smell cilk_for
+    {
+        A [p] [i] = A [p] [i] xor A [q] [i];
+        A [q] [i] = A [p] [i] xor A [q] [i];
+        A [p] [i] = A [p] [i] xor A [q] [i];
+    }
+}
+
+void re_order ( bool** A, int r, int c )
+{
+    int i = 0, j = 0;
+    while ( A [i] [c - 1] == 0 )
+        i++;
+    //-- i definitely points to a 1 now
+    while ( j < r && i < r )
+    {
+        if ( (A [j] [c - 1] == 0 && A [i] [c - 1] == 1) && (j > i) )
+        {
+            exchange_rows ( A, r, c, j, i );
+            j++;
+            i++;
+            //-- To make sure that i points to a 1
+            while ( A [i] [c - 1] == 0 )
+                i++;
+        } else
+        {
+            j++;
+        }
+    }
+}
+
 struct result
 {
     int max;
@@ -105,7 +147,15 @@ int main ( int argc, char** argv )
         }
         cout << endl;
 
-        cout << vector_max ( d, n ).index << " " << vector_max ( d, n ).max << endl;
+        int jwithmax = vector_max ( d, n ).index;
+        cout << jwithmax << " " << vector_max ( d, n ).max << endl;
+
+        exchange_cols ( A, n, m, jwithmax, m - 1 );
+        print_matrix ( A, n, m );
+        re_order ( A, n, m );
+        cout << "Reordered matrix = " << endl;
+        print_matrix ( A, n, m );
+
         gettimeofday ( &end_time, NULL );
 
         cout << "Time taken for (" << n << "," << m << ") = "
